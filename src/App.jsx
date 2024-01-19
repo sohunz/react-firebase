@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Auth from "./components/Auth";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
 import { db } from "./config/firebase";
 
 const App = () => {
@@ -21,7 +21,6 @@ const App = () => {
                 id: doc.id,
             }));
             setMovieList(filteredData);
-            console.log(filteredData);
         } catch (err) {
             console.log(err);
         }
@@ -30,8 +29,11 @@ const App = () => {
 
     useEffect(() => {
         getMovieList();
+        console.log('run');
     }, []);
 
+
+    // add movie
     const onSubmitMovie = async () => {
         try {
             await addDoc(movieCollectionRef, {title: newMovieTitle, releaseDate: newMovieRelease, receivedAnOscar: isNewMovieOscar})
@@ -40,6 +42,17 @@ const App = () => {
             console.log(err);
         }
     }
+
+    // delete movie
+    const deleteMovie = async (id) => {
+        try {
+          const movieDoc = doc(db, 'movies', id);
+          await deleteDoc(movieDoc);
+        } catch (err) {
+          console.log(err);
+        }
+        getMovieList();
+      };
 
     return (
         <div>
@@ -71,6 +84,7 @@ const App = () => {
                             <p>{item.title}</p>
                             <p>{item.releaseDate}</p>
                             {item.receivedAnOscar ? <p>won oscar</p> : ""}
+                            <button onClick={() => deleteMovie(item.id)}>delete</button>
                         </div>
                     );
                 })}
