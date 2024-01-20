@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from "react";
 import Auth from "./components/Auth";
-import { collection, getDocs, addDoc, deleteDoc, doc } from "firebase/firestore";
+import {
+    collection,
+    getDocs,
+    addDoc,
+    deleteDoc,
+    doc,
+    onSnapshot,
+} from "firebase/firestore";
 import { db } from "./config/firebase";
+import "./App.css"; // Import the CSS file
 
 const App = () => {
     const [movieList, setMovieList] = useState([]);
@@ -12,82 +20,94 @@ const App = () => {
     const [newMovieRelease, setNewMovieRelease] = useState(0);
     const [isNewMovieOscar, setNewMovieOscar] = useState(false);
 
-
-    const getMovieList = async () => {
+    const getMovieList = () => {
         try {
-            const data = await getDocs(movieCollectionRef);
-            const filteredData = data.docs.map((doc) => ({
-                ...doc.data(),
-                id: doc.id,
-            }));
-            setMovieList(filteredData);
+            const unsubscribe = onSnapshot(
+                movieCollectionRef,
+                (querySnapshot) => {
+                    const newData = querySnapshot.docs.map((doc) => ({
+                        ...doc.data(),
+                        id: doc.id,
+                    }));
+                    setMovieList(newData);
+                }
+            );
+
+            return () => unsubscribe(); // Unsubscribe when the component unmounts
         } catch (err) {
             console.log(err);
         }
     };
 
-
     useEffect(() => {
         getMovieList();
-        console.log('run');
+        console.log("run");
     }, []);
-
 
     // add movie
     const onSubmitMovie = async () => {
         try {
-            await addDoc(movieCollectionRef, {title: newMovieTitle, releaseDate: newMovieRelease, receivedAnOscar: isNewMovieOscar})
-            getMovieList()
+            await addDoc(movieCollectionRef, {
+                title: newMovieTitle,
+                releaseDate: newMovieRelease,
+                receivedAnOscar: isNewMovieOscar,
+            });
+            setNewMovieTitle("");
+            setNewMovieRelease(0);
+            setNewMovieOscar(false);
         } catch (err) {
             console.log(err);
         }
-    }
+    };
 
     // delete movie
     const deleteMovie = async (id) => {
         try {
-          const movieDoc = doc(db, 'movies', id);
-          await deleteDoc(movieDoc);
+            const movieDoc = doc(db, "movies", id);
+            await deleteDoc(movieDoc);
         } catch (err) {
-          console.log(err);
+            console.log(err);
         }
-        getMovieList();
-      };
+    };
 
     return (
-        <div>
+        <div className="container">
             <Auth />
-            <div>
+            <div className="movie-form">
                 <input
                     type="text"
                     placeholder="movie title"
+                    value={newMovieTitle}
                     onChange={(e) => setNewMovieTitle(e.target.value)}
                 />
                 <input
                     type="number"
-                    placeholder="release data"
+                    placeholder="release date"
+                    value={newMovieRelease}
                     onChange={(e) => setNewMovieRelease(e.target.value)}
                 />
                 <input
                     type="checkbox"
-                    placeholder="movie title"
                     onChange={(e) => setNewMovieOscar(e.target.checked)}
                     checked={isNewMovieOscar}
                 />
-                <label htmlFor="">received an oscar</label>
+                <label htmlFor="isNewMovieOscar">Received an Oscar</label>
                 <button onClick={onSubmitMovie}>Add Movie</button>
             </div>
-            <div>
-                {movieList.map((item) => {
-                    return (
-                        <div key={item.id} style={{border: '1px solid black', margin: '5px'}}>
-                            <p>{item.title}</p>
-                            <p>{item.releaseDate}</p>
-                            {item.receivedAnOscar ? <p>won oscar</p> : ""}
-                            <button onClick={() => deleteMovie(item.id)}>delete</button>
-                        </div>
-                    );
-                })}
+            <div className="movie-list">
+                {movieList.map((item) => (
+                    <div key={item.id} className="movie-card">
+                        <p>{item.title}</p>
+                        <p>{item.releaseDate}</p>
+                        {item.receivedAnOscar ? <p>Won Oscar</p> : ""}
+                        <button
+                            className="delete-button"
+                            onClick={() => deleteMovie(item.id)}
+                        >
+                            Delete
+                        </button>
+                    </div>
+                ))}
             </div>
         </div>
     );
